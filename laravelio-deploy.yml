@@ -1,0 +1,67 @@
+---
+# Playbook to deploy laravel.io and its components
+# TO DO
+
+#- name: Install DB
+#  hosts: localhost
+#  gather_facts: false
+#  environment:
+#     GOOGLE_CREDENTIALS: "{{ gcp_cred_file }}"
+#  roles:
+#    - db
+#
+#- name: Install Laravel
+#  hosts: localhost
+#  gather_facts: false
+#  environment:
+#     GOOGLE_CREDENTIALS: "{{ gcp_cred_file }}"
+#  roles:
+#    - laravel
+
+
+# NOVO CODE PARA TESTAR SO PARA VER O QUE DÁ
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-deployment
+  labels:
+    app: laravel
+    tier: app
+spec:
+  selector:
+    matchLabels:
+      app: laravel
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: laravel
+        tier: app
+    spec:
+      containers:
+      - name: laravel
+        image: axcm19/ascn-grupo23-laravel  # repositorio com imagem docker do checkpoint 1
+        env: # The variables below could be set on a ConfigMap object
+        - name: DB_HOST
+          value: mysql-service
+        - name: DB_DATABASE
+          value: laravel
+        - name: DB_USERNAME
+          value: testing
+        - name: DB_PASSWORD
+          value: "password"
+        - name: MIGRATE
+          value: TRUE  
+           # Use Secret object in real usage
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim
+
+    
