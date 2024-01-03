@@ -1,37 +1,45 @@
-# seguindo o exemplo do guiao 2 - instalar swap com ansible
-
 ---
-- name: Install Mysql packages
-  apt:
-    name: "{{ item }}"
-    state: latest
-  loop: "{{ db_packages }}"
+# Deployment for MySQL
 
-- name: Change MySQL bind-address
-  lineinfile:
-    path: /etc/mysql/mysql.conf.d/mysqld.cnf
-    regexp: '^bind-address'
-    line: 'bind-address   = {{ app_db_ip }}'
+- name: Imprimir mensagem
+  debug:
+      msg: "{{ db_namespace }}"
+
+- name: Create db namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ db_namespace }}"
     state: present
-    backrefs: yes
-  notify: restart mysql
 
-- name: Create >Laravel.io database
-  mysql_db: name={{ laravel_db_name }} state=present  # <---
 
-- name: Cleanup users with same name accounts
-  mysql_user:
-    name: "{{ laravel_db_user }}"    # <---
-    host_all: yes
-    state: absent
-
-- name: Create database user with password and all database privileges and 'WITH GRANT OPTION'
-  mysql_user:
-    name: "{{ laravel_db_user }}"
-    password: "{{ laravel_db_password }}"
-    priv: '*.*:ALL,GRANT'
-    host: "{{ app_ip }}" # antes estava app_user_ip
+- name: PVC MySQL
+  kubernetes.core.k8s:
     state: present
+    #src: roles/db/templates/mysql-pvc.yml
+    definition: "{{ lookup('template', 'roles/db/templates/mysql-pvc.yml') | from_yaml }}"
+   
+
+- name: Deploy MySQL
+  kubernetes.core.k8s:
+    state: present
+    #src: roles/db/templates/mysql-deployment.yml
+    definition: "{{ lookup('template', 'roles/db/templates/mysql-deployment.yml') | from_yaml }}"
+
+- name: Start MySQL Service
+  kubernetes.core.k8s:
+    state: present
+    #src: roles/db/templates/mysql-service.yml
+    definition: "{{ lookup('template', 'roles/db/templates/mysql-service.yml') | from_yaml }}"
+
+- name: Wait for MySQL Service to start
+  shell: sleep 10
+      
+
+
+
+  
+
 
 
     
